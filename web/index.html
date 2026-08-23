@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Hangman — Guess the Fruit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #1b1b1f;
+    --panel: #242429;
+    --panel-border: #34343b;
+    --text: #f5f1e8;
+    --muted: #8b8b93;
+    --mango: #ff9f1c;
+    --papaya: #ff6b6b;
+    --lime: #c6ff3d;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+
+  .card {
+    width: 100%;
+    max-width: 480px;
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 16px;
+    padding: 32px 28px 28px;
+  }
+
+  header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 4px;
+  }
+
+  h1 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 28px;
+    letter-spacing: -0.02em;
+    margin: 0;
+  }
+
+  .attempts {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--muted);
+    letter-spacing: 0.02em;
+  }
+
+  .attempts strong { color: var(--papaya); }
+
+  .tagline {
+    color: var(--muted);
+    font-size: 14px;
+    margin: 0 0 20px;
+  }
+
+  .gallows-wrap {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 16px;
+  }
+
+  .gallows-wrap svg { width: 160px; height: 180px; }
+
+  .rope-part {
+    stroke: var(--text);
+    stroke-width: 6;
+    stroke-linecap: round;
+    fill: none;
+    stroke-dasharray: 60;
+    stroke-dashoffset: 60;
+    transition: stroke-dashoffset 0.4s ease;
+  }
+  .rope-part.head { fill: var(--papaya); stroke: var(--papaya); stroke-dasharray: 0; stroke-dashoffset: 0; opacity: 0; transition: opacity 0.3s ease; }
+  .rope-part.head.revealed { opacity: 1; }
+  .rope-part.revealed { stroke-dashoffset: 0; }
+
+  .word {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin: 20px 0 24px;
+  }
+
+  .letter-box {
+    width: 34px;
+    height: 42px;
+    border-bottom: 3px solid var(--muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 22px;
+    text-transform: uppercase;
+  }
+
+  .letter-box.filled {
+    border-bottom-color: var(--lime);
+    animation: flip 0.35s ease;
+  }
+
+  @keyframes flip {
+    from { transform: rotateX(90deg); opacity: 0; }
+    to { transform: rotateX(0deg); opacity: 1; }
+  }
+
+  .message {
+    text-align: center;
+    min-height: 22px;
+    font-size: 14px;
+    font-weight: 500;
+    margin-bottom: 18px;
+  }
+  .message.win { color: var(--lime); }
+  .message.lose { color: var(--papaya); }
+
+  .keyboard {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    align-items: center;
+  }
+
+  .kb-row { display: flex; gap: 6px; }
+
+  .key {
+    width: 32px;
+    height: 38px;
+    border-radius: 8px;
+    border: 1px solid var(--panel-border);
+    background: #2c2c33;
+    color: var(--text);
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: 600;
+    font-size: 14px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background 0.15s ease, transform 0.1s ease;
+  }
+  .key:hover:not(:disabled) { background: #3a3a42; transform: translateY(-1px); }
+  .key:disabled { cursor: default; opacity: 0.45; }
+  .key.correct { background: var(--lime); color: #1b1b1f; border-color: var(--lime); }
+  .key.wrong { background: var(--papaya); color: #1b1b1f; border-color: var(--papaya); }
+
+  .restart {
+    display: block;
+    margin: 22px auto 0;
+    padding: 10px 22px;
+    border-radius: 999px;
+    border: 1px solid var(--mango);
+    background: transparent;
+    color: var(--mango);
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+    visibility: hidden;
+  }
+  .restart.show { visibility: visible; }
+  .restart:hover { background: var(--mango); color: #1b1b1f; }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <header>
+    <h1>Hangman</h1>
+    <div class="attempts">MISSES <strong id="missCount">0</strong>/<span id="maxMiss">6</span></div>
+  </header>
+  <p class="tagline">Guess the fruit, one letter at a time.</p>
+
+  <div class="gallows-wrap">
+    <svg viewBox="0 0 160 180">
+      <line x1="20" y1="170" x2="100" y2="170" stroke="#8b8b93" stroke-width="6" stroke-linecap="round" />
+      <line x1="40" y1="170" x2="40" y2="15" stroke="#8b8b93" stroke-width="6" stroke-linecap="round" />
+      <line x1="40" y1="15" x2="105" y2="15" stroke="#8b8b93" stroke-width="6" stroke-linecap="round" />
+      <line x1="105" y1="15" x2="105" y2="38" stroke="#8b8b93" stroke-width="4" stroke-linecap="round" />
+
+      <circle class="rope-part head" id="p-head" cx="105" cy="52" r="14" />
+      <line class="rope-part" id="p-body" x1="105" y1="66" x2="105" y2="110" />
+      <line class="rope-part" id="p-arm-l" x1="105" y1="80" x2="88" y2="98" />
+      <line class="rope-part" id="p-arm-r" x1="105" y1="80" x2="122" y2="98" />
+      <line class="rope-part" id="p-leg-l" x1="105" y1="110" x2="90" y2="140" />
+      <line class="rope-part" id="p-leg-r" x1="105" y1="110" x2="120" y2="140" />
+    </svg>
+  </div>
+
+  <div class="word" id="wordDisplay"></div>
+  <div class="message" id="message"></div>
+  <div class="keyboard" id="keyboard"></div>
+  <button class="restart" id="restartBtn">Play again</button>
+</div>
+
+<script>
+  const WORDS = ["apple", "banana", "mango", "orange", "grapes", "papaya"];
+  const MAX_MISSES = 6;
+  const BODY_PARTS = ["p-head", "p-body", "p-arm-l", "p-arm-r", "p-leg-l", "p-leg-r"];
+  const KB_ROWS = ["qwertyuiop", "asdfghjkl", "zxcvbnm"];
+
+  let word, guessed, misses, over;
+
+  const wordDisplay = document.getElementById("wordDisplay");
+  const keyboard = document.getElementById("keyboard");
+  const message = document.getElementById("message");
+  const missCount = document.getElementById("missCount");
+  const restartBtn = document.getElementById("restartBtn");
+
+  document.getElementById("maxMiss").textContent = MAX_MISSES;
+
+  function buildKeyboard() {
+    keyboard.innerHTML = "";
+    KB_ROWS.forEach(row => {
+      const rowEl = document.createElement("div");
+      rowEl.className = "kb-row";
+      [...row].forEach(letter => {
+        const btn = document.createElement("button");
+        btn.className = "key";
+        btn.textContent = letter;
+        btn.dataset.letter = letter;
+        btn.addEventListener("click", () => handleGuess(letter));
+        rowEl.appendChild(btn);
+      });
+      keyboard.appendChild(rowEl);
+    });
+  }
+
+  function renderWord() {
+    wordDisplay.innerHTML = "";
+    [...word].forEach(letter => {
+      const box = document.createElement("div");
+      const revealed = guessed.has(letter);
+      box.className = "letter-box" + (revealed ? " filled" : "");
+      box.textContent = revealed ? letter : "";
+      wordDisplay.appendChild(box);
+    });
+  }
+
+  function renderGallows() {
+    BODY_PARTS.forEach((id, i) => {
+      document.getElementById(id).classList.toggle("revealed", i < misses);
+    });
+  }
+
+  function setMessage(text, cls) {
+    message.textContent = text;
+    message.className = "message" + (cls ? " " + cls : "");
+  }
+
+  function handleGuess(letter) {
+    if (over || guessed.has(letter)) return;
+    guessed.add(letter);
+
+    const btn = keyboard.querySelector(`[data-letter="${letter}"]`);
+    btn.disabled = true;
+
+    if (word.includes(letter)) {
+      btn.classList.add("correct");
+      renderWord();
+      if ([...word].every(l => guessed.has(l))) {
+        endGame(true);
+      }
+    } else {
+      btn.classList.add("wrong");
+      misses++;
+      missCount.textContent = misses;
+      renderGallows();
+      if (misses >= MAX_MISSES) {
+        endGame(false);
+      }
+    }
+  }
+
+  function endGame(won) {
+    over = true;
+    if (won) {
+      setMessage("Solved it! Well guessed.", "win");
+    } else {
+      [...word].forEach(l => guessed.add(l));
+      renderWord();
+      setMessage(`Out of guesses. The word was "${word}".`, "lose");
+    }
+    keyboard.querySelectorAll(".key").forEach(k => (k.disabled = true));
+    restartBtn.classList.add("show");
+  }
+
+  function newGame() {
+    word = WORDS[Math.floor(Math.random() * WORDS.length)];
+    guessed = new Set();
+    misses = 0;
+    over = false;
+    missCount.textContent = 0;
+    setMessage("", "");
+    restartBtn.classList.remove("show");
+    buildKeyboard();
+    renderWord();
+    renderGallows();
+  }
+
+  document.addEventListener("keydown", e => {
+    const letter = e.key.toLowerCase();
+    if (/^[a-z]$/.test(letter)) handleGuess(letter);
+  });
+
+  restartBtn.addEventListener("click", newGame);
+
+  newGame();
+</script>
+
+</body>
+</html>
