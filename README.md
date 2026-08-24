@@ -16,21 +16,10 @@ This project exists in two versions, built in order:
 Keeping both versions in the repo is intentional — it shows the
 progression from a working script to a polished, shareable interface.
 
-## Play it
-
-**Web version (recommended):**
-Open [`web/index.html`](./web/index.html) directly in your browser,
-or play the live version here: `<add your GitHub Pages link here>`
-
-**CLI version:**
-```bash
-python3 cli/hangman.py
-```
-Requires Python 3.9+ (uses `list[str]` type hints).
 
 ## How to play
 
-- A random fruit name is chosen and shown as blank letter slots.
+- Determine a category (fruits, animals, countries) and a difficulty level (easy, medium, difficult), then a random word is selected accordingly and displayed as blank letter fields.
 - Guess one letter at a time, using your keyboard or the on-screen keys.
 - Correct guesses reveal every matching letter in the word.
 - Wrong guesses count against your 6 total misses.
@@ -38,7 +27,6 @@ Requires Python 3.9+ (uses `list[str]` type hints).
 
 ## Project structure
 
-```
 hangman-game/
 ├── README.md
 ├── LICENSE
@@ -47,11 +35,9 @@ hangman-game/
 │   └── hangman.py     # command-line version
 └── web/
     └── index.html      # browser version (HTML/CSS/JS, single file)
-```
 
-## Possible next steps
-
-- Add a word/category selector (fruits, animals, countries, etc.)
-- Track win/loss stats across rounds using `localStorage`
-- Add a difficulty setting that changes the number of allowed misses
-- Write unit tests for the CLI version's guessing logic
+## Features
+- **Categories:** Choose between Fruits, Animals, and Countries.
+- **Difficulty Levels:** Select Easy, Medium, or Hard.
+- **Dual Interface:** Play in your terminal or in a browser.
+- 
