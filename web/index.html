@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Hangman — Guess the Fruit</title>
+<title>Hangman — Category & Difficulty</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet" />
@@ -35,7 +35,7 @@
 
   .card {
     width: 100%;
-    max-width: 480px;
+    max-width: 500px;
     background: var(--panel);
     border: 1px solid var(--panel-border);
     border-radius: 16px;
@@ -70,16 +70,68 @@
   .tagline {
     color: var(--muted);
     font-size: 14px;
-    margin: 0 0 20px;
+    margin: 0 0 16px;
+  }
+
+  /*category & difficulty */
+  .controls {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .control-group {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .control-group label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .select-input {
+    background: #2c2c33;
+    color: var(--text);
+    border: 1px solid var(--panel-border);
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    outline: none;
+    cursor: pointer;
+    transition: border-color 0.15s ease;
+  }
+
+  .select-input:focus {
+    border-color: var(--mango);
+  }
+
+  /* Dynamic Hint Banner */
+  .hint-banner {
+    text-align: center;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    color: var(--mango);
+    background: rgba(255, 159, 28, 0.1);
+    border: 1px dashed rgba(255, 159, 28, 0.3);
+    border-radius: 8px;
+    padding: 6px 12px;
+    margin-bottom: 16px;
   }
 
   .gallows-wrap {
     display: flex;
     justify-content: center;
-    margin-bottom: 16px;
+    margin-bottom: 12px;
   }
 
-  .gallows-wrap svg { width: 160px; height: 180px; }
+  .gallows-wrap svg { width: 150px; height: 165px; }
 
   .rope-part {
     stroke: var(--text);
@@ -99,7 +151,7 @@
     justify-content: center;
     gap: 8px;
     flex-wrap: wrap;
-    margin: 20px 0 24px;
+    margin: 16px 0 20px;
   }
 
   .letter-box {
@@ -165,7 +217,7 @@
 
   .restart {
     display: block;
-    margin: 22px auto 0;
+    margin: 20px auto 0;
     padding: 10px 22px;
     border-radius: 999px;
     border: 1px solid var(--mango);
@@ -189,7 +241,30 @@
     <h1>Hangman</h1>
     <div class="attempts">MISSES <strong id="missCount">0</strong>/<span id="maxMiss">6</span></div>
   </header>
-  <p class="tagline">Guess the fruit, one letter at a time.</p>
+  <p class="tagline">Guess the hidden word before running out of attempts.</p>
+
+  <div class="controls">
+    <div class="control-group">
+      <label for="categorySelect">Category</label>
+      <select id="categorySelect" class="select-input">
+        <option value="fruits">Fruits</option>
+        <option value="animals">Animals</option>
+        <option value="countries">Countries</option>
+      </select>
+    </div>
+    <div class="control-group">
+      <label for="difficultySelect">Difficulty</label>
+      <select id="difficultySelect" class="select-input">
+        <option value="easy">Easy</option>
+        <option value="medium">Medium</option>
+        <option value="hard">Hard</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="hint-banner" id="hintBanner">
+    Hint: [Fruits] - [Easy]
+  </div>
 
   <div class="gallows-wrap">
     <svg viewBox="0 0 160 180">
@@ -214,18 +289,38 @@
 </div>
 
 <script>
-  const WORDS = ["apple", "banana", "mango", "orange", "grapes", "papaya"];
+  const WORD_BANKS = {
+    fruits: {
+      easy: ["Banana", "Apple", "Kiwi", "Melon", "Lemon", "Mango", "Grape"],
+      medium: ["Orange", "Avocado", "Coconut", "Apricot", "Cherry", "Papaya", "Peach"],
+      hard: ["Quince", "Fig", "Kumquat", "Persimmon", "Pomegranate", "Blackberry", "Guava"]
+    },
+    animals: {
+      easy: ["Cat", "Lion", "Rabbit", "Tiger", "Panda", "Monkey", "Dog"],
+      medium: ["Dolphin", "Giraffe", "Elephant", "Penguin", "Cheetah", "Kangaroo", "Leopard"],
+      hard: ["Lynx", "Jaguar", "Chameleon", "Platypus", "Porcupine", "Walrus", "Hedgehog"]
+    },
+    countries: {
+      easy: ["Canada", "Japan", "Italy", "Brazil", "Spain", "France", "China"],
+      medium: ["Germany", "Mexico", "Vietnam", "Portugal", "Thailand", "Egypt", "Greece"],
+      hard: ["Kyrgyzstan", "Luxembourg", "Azerbaijan", "Zimbabwe", "Madagascar", "Kazakhstan", "Djibouti"]
+    }
+  };
+
   const MAX_MISSES = 6;
   const BODY_PARTS = ["p-head", "p-body", "p-arm-l", "p-arm-r", "p-leg-l", "p-leg-r"];
   const KB_ROWS = ["qwertyuiop", "asdfghjkl", "zxcvbnm"];
 
-  let word, guessed, misses, over;
+  let targetWord, currentCategory, currentDifficulty, guessed, misses, over;
 
   const wordDisplay = document.getElementById("wordDisplay");
   const keyboard = document.getElementById("keyboard");
   const message = document.getElementById("message");
   const missCount = document.getElementById("missCount");
   const restartBtn = document.getElementById("restartBtn");
+  const categorySelect = document.getElementById("categorySelect");
+  const difficultySelect = document.getElementById("difficultySelect");
+  const hintBanner = document.getElementById("hintBanner");
 
   document.getElementById("maxMiss").textContent = MAX_MISSES;
 
@@ -248,11 +343,12 @@
 
   function renderWord() {
     wordDisplay.innerHTML = "";
-    [...word].forEach(letter => {
+    [...targetWord].forEach(letter => {
+      const lowerLetter = letter.toLowerCase();
       const box = document.createElement("div");
-      const revealed = guessed.has(letter);
+      const revealed = guessed.has(lowerLetter);
       box.className = "letter-box" + (revealed ? " filled" : "");
-      box.textContent = revealed ? letter : "";
+      box.textContent = revealed ? letter.toUpperCase() : "";
       wordDisplay.appendChild(box);
     });
   }
@@ -268,6 +364,10 @@
     message.className = "message" + (cls ? " " + cls : "");
   }
 
+  function capitalize(str) {
+    return str.charAt(0).toUpperCase() + str.slice(1);
+  }
+
   function handleGuess(letter) {
     if (over || guessed.has(letter)) return;
     guessed.add(letter);
@@ -275,14 +375,15 @@
     const btn = keyboard.querySelector(`[data-letter="${letter}"]`);
     btn.disabled = true;
 
-    if (word.includes(letter)) {
-      btn.classList.add("correct");
+    const lowerTarget = targetWord.toLowerCase();
+    if (lowerTarget.includes(letter)) {
+      if (btn) btn.classList.add("correct");
       renderWord();
-      if ([...word].every(l => guessed.has(l))) {
-        endGame(true);
-      }
+      
+      const isWon = [...lowerTarget].every(l => guessed.has(l));
+      if (isWon) endGame(true);
     } else {
-      btn.classList.add("wrong");
+      if (btn) btn.classList.add("wrong");
       misses++;
       missCount.textContent = misses;
       renderGallows();
@@ -290,33 +391,46 @@
         endGame(false);
       }
     }
+  
   }
 
   function endGame(won) {
     over = true;
     if (won) {
-      setMessage("Solved it! Well guessed.", "win");
+      setMessage("Congratulations! You found the word.", "win");
     } else {
-      [...word].forEach(l => guessed.add(l));
+      [...targetWord.toLowerCase()].forEach(l => guessed.add(l));
       renderWord();
-      setMessage(`Out of guesses. The word was "${word}".`, "lose");
+      setMessage(`You lose! The word was "${targetWord}".`, "lose");
     }
     keyboard.querySelectorAll(".key").forEach(k => (k.disabled = true));
     restartBtn.classList.add("show");
   }
 
   function newGame() {
-    word = WORDS[Math.floor(Math.random() * WORDS.length)];
+    currentCategory = categorySelect.value;
+    currentDifficulty = difficultySelect.value;
+    
+    const wordList = WORD_BANKS[currentCategory][currentDifficulty];
+    targetWord = wordList[Math.floor(Math.random() * wordList.length)];
+    
     guessed = new Set();
     misses = 0;
     over = false;
+    
     missCount.textContent = 0;
+    hintBanner.textContent = `Hint: [${capitalize(currentCategory)}] - [${capitalize(currentDifficulty)}]`;
     setMessage("", "");
     restartBtn.classList.remove("show");
+    
     buildKeyboard();
     renderWord();
     renderGallows();
   }
+
+  // Seçimler değiştiğinde oyunu otomatik yenile
+  categorySelect.addEventListener("change", newGame);
+  difficultySelect.addEventListener("change", newGame);
 
   document.addEventListener("keydown", e => {
     const letter = e.key.toLowerCase();
